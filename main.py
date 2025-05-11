@@ -45,7 +45,7 @@ def monitor():
                 print(f"✓ Aucun changement ({price}€)")
         except Exception as e:
             print("Erreur :", e)
-        time.sleep(60)
+        time.sleep(3)
 
 # === FLASK KEEP-ALIVE ===
 app = Flask('')
