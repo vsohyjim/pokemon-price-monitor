@@ -1,61 +1,56 @@
 import requests
 import time
-from bs4 import BeautifulSoup
 import os
-import threading
-from flask import Flask
 
-# === CONFIG ===
-URL = "https://www.pokepixel.net/products/b0chbcsr4j-pokemon-asmodee-scarlet-et-violet-151-3-5-pack-of-6-booster-packs-151-board-games-card-games-playing-and-collecting-cards-ages-6"
-AMAZON_LINK = "https://amazon.de/dp/B0CHBCSR4J"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+URL = "https://store.fcbarcelona.com/fr/products/fc-barcelona-ldts-away-shirt-24-25?country=FR"
+CHECK_INTERVAL = 3  # en secondes
+PRODUCT_ID = "fc-barcelona-ldts-away-shirt-24-25"
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
     "Pragma": "no-cache",
-    "Accept": "*/*"
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.8"
 }
-last_price = 46.75
 
-# === TELEGRAM ===
-def send_telegram_message(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "disable_web_page_preview": False}
-    requests.post(url, data=data)
+notified_sizes = set()
 
-# === PRIX ===
-def get_price():
-    res = requests.get(URL, headers=HEADERS, timeout=10)
-    soup = BeautifulSoup(res.text, "html.parser")
-    tag = soup.find("meta", {"property": "og:price:amount"})
-    return float(tag["content"].replace(",", ".")) if tag else None
+def send_telegram_message(size):
+    message = (
+        f"🔥 Maillot Travis Scott disponible en taille *{size}* !\n\n"
+        f"🔗 [Clique ici pour l'acheter]({URL})"
+    )
+    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    data = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": False
+    }
+    requests.post(telegram_url, data=data)
 
-# === MONITORING LOOP ===
-def monitor():
-    global last_price
-    print("🟢 Suivi du prix lancé...")
-    while True:
-        try:
-            price = get_price()
-            if price != last_price:
-                msg = f"📦 Prix changé !\nAncien : {last_price}€\nNouveau : {price}€\n🛒 {AMAZON_LINK}"
-                send_telegram_message(msg)
-                last_price = price
+def check_stock():
+    json_url = f"https://store.fcbarcelona.com/products/{PRODUCT_ID}.js"
+    try:
+        response = requests.get(json_url, headers=HEADERS, timeout=10)
+        data = response.json()
+        variants = data.get("variants", [])
+        for v in variants:
+            size = v.get("public_title")
+            available = v.get("available")
+            if available and size not in notified_sizes:
+                print(f"[ALERTE] Taille dispo : {size}")
+                send_telegram_message(size)
+                notified_sizes.add(size)
             else:
-                print(f"✓ Aucun changement ({price}€)")
-        except Exception as e:
-            print("Erreur :", e)
-        time.sleep(3)
+                print(f"🔍 Taille {size} : {'✅' if available else '❌'}")
+    except Exception as e:
+        print("[Erreur]", e)
 
-# === FLASK KEEP-ALIVE ===
-app = Flask('')
-@app.route('/')
-def home():
-    return "Bot Pokémon actif ✅"
+print("🟢 Bot Travis Scott lancé...")
 
-def run_server():
-    app.run(host='0.0.0.0', port=8080)
-
-# === LANCEMENT DES THREADS ===
-threading.Thread(target=monitor).start()
-threading.Thread(target=run_server).start()
+while True:
+    check_stock()
+    time.sleep(CHECK_INTERVAL)
