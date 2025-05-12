@@ -2,8 +2,8 @@ import requests
 import time
 import os
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_TOKEN = os.getenv("7955874330:AAGMas9suuaSvlfMO63H3peuav8s_heyB7Q")
+TELEGRAM_CHAT_ID = os.getenv("-4603633681")
 URL = "https://store.fcbarcelona.com/fr/products/fc-barcelona-ldts-away-shirt-24-25?country=FR"
 CHECK_INTERVAL = 3  # en secondes
 PRODUCT_ID = "fc-barcelona-ldts-away-shirt-24-25"
