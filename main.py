@@ -1,11 +1,14 @@
 import requests
 import time
 import os
+import threading
+from flask import Flask
 
+# === CONFIG ===
 TELEGRAM_TOKEN = os.getenv("7955874330:AAGMas9suuaSvlfMO63H3peuav8s_heyB7Q")
 TELEGRAM_CHAT_ID = os.getenv("-4603633681")
 URL = "https://store.fcbarcelona.com/fr/products/fc-barcelona-ldts-away-shirt-24-25?country=FR"
-CHECK_INTERVAL = 3  # en secondes
+CHECK_INTERVAL = 3  # secondes
 PRODUCT_ID = "fc-barcelona-ldts-away-shirt-24-25"
 
 HEADERS = {
@@ -17,6 +20,7 @@ HEADERS = {
 
 notified_sizes = set()
 
+# === TELEGRAM NOTIF ===
 def send_telegram_message(size):
     message = (
         f"🔥 Maillot Travis Scott disponible en taille *{size}* !\n\n"
@@ -31,6 +35,7 @@ def send_telegram_message(size):
     }
     requests.post(telegram_url, data=data)
 
+# === STOCK CHECK ===
 def check_stock():
     json_url = f"https://store.fcbarcelona.com/products/{PRODUCT_ID}.js"
     try:
@@ -49,8 +54,22 @@ def check_stock():
     except Exception as e:
         print("[Erreur]", e)
 
-print("🟢 Bot Travis Scott lancé...")
+def monitoring_loop():
+    print("🟢 Bot Travis Scott lancé...")
+    while True:
+        check_stock()
+        time.sleep(CHECK_INTERVAL)
 
-while True:
-    check_stock()
-    time.sleep(CHECK_INTERVAL)
+# === FLASK SERVER POUR GARANTIR LE UPTIME ===
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "🟣 Bot Travis Scott actif ✅"
+
+def run_server():
+    app.run(host="0.0.0.0", port=8080)
+
+# === THREADS ===
+threading.Thread(target=monitoring_loop).start()
+threading.Thread(target=run_server).start()
