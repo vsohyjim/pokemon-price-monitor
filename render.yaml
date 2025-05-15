@@ -1,13 +1,1 @@
-services:
-  - type: worker
-    name: pokemon-monitor
-    runtime: python
-    plan: free
-    autoDeploy: true
-    buildCommand: ""
-    startCommand: python main.py
-    envVars:
-      - key: TELEGRAM_TOKEN
-        value: 7955874330:AAGMas9suuaSvlfMO63H3peuav8s_heyB7Q
-      - key: TELEGRAM_CHAT_ID
-        value: -4603633681
+
