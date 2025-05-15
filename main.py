@@ -4,10 +4,10 @@ import os
 import threading
 from flask import Flask
 
-# === CONFIG DISCORD ===
-DISCORD_TOKEN = "MTM3MTU0MDMwNzE5MTEzNjQ2Ng.Gw7R7H.glajES6u9HPU0skz1MgLkMcW9RN53-HD9dY_KA"
-SOURCE_CHANNEL_ID = 1332865315859726342
-ALERT_CHANNEL_ID = 1371547563060232314
+# === CONFIG ===
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")  # ✅ sécurisé
+SOURCE_CHANNEL_ID = int(os.getenv("SOURCE_CHANNEL_ID"))
+ALERT_CHANNEL_ID = int(os.getenv("ALERT_CHANNEL_ID"))
 KEYWORDS = ["fnac", "151"]
 CHECK_INTERVAL = 5  # secondes
 
@@ -15,13 +15,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 client = discord.Client(intents=intents)
-
-# Pour stocker les IDs des messages déjà lus
 seen_message_ids = set()
 
 async def check_messages():
     await client.wait_until_ready()
-    print("🎯 Bot connecté et prêt")
+    print("🎯 Bot connecté et en surveillance")
     while not client.is_closed():
         try:
             source_channel = client.get_channel(SOURCE_CHANNEL_ID)
@@ -36,12 +34,12 @@ async def check_messages():
                             print(f"✅ Message détecté : {msg.content}")
                         seen_message_ids.add(msg.id)
             else:
-                print("⚠️ Channels non trouvés")
+                print("⚠️ Channels introuvables")
         except Exception as e:
             print(f"[ERREUR] {e}")
         await asyncio.sleep(CHECK_INTERVAL)
 
-# === FLASK POUR KEEP-ALIVE RAILWAY ===
+# === FLASK KEEP-ALIVE ===
 app = Flask(__name__)
 
 @app.route("/")
@@ -51,7 +49,7 @@ def index():
 def run_flask():
     app.run(host="0.0.0.0", port=8080)
 
-# === LANCEMENT FLASK + DISCORD ===
+# === LANCEMENT MULTITHREAD ===
 threading.Thread(target=run_flask).start()
 
 @client.event
