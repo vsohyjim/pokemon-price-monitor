@@ -8,6 +8,10 @@ from flask import Flask
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")  # ✅ sécurisé
 SOURCE_CHANNEL_ID = int(os.getenv("SOURCE_CHANNEL_ID"))
 ALERT_CHANNEL_ID = int(os.getenv("ALERT_CHANNEL_ID"))
+print("DEBUG TOKEN:", os.getenv("DISCORD_TOKEN"))
+print("DEBUG SOURCE_CHANNEL_ID:", os.getenv("SOURCE_CHANNEL_ID"))
+print("DEBUG ALERT_CHANNEL_ID:", os.getenv("ALERT_CHANNEL_ID"))
+
 KEYWORDS = ["fnac", "151"]
 CHECK_INTERVAL = 5  # secondes
 
