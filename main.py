@@ -1,83 +1,62 @@
-import requests
-import time
+import discord
+import asyncio
+import os
 import threading
 from flask import Flask
 
-# === CONFIGURATION FIXE ===
-TELEGRAM_TOKEN = "7955874330:AAGMas9suuaSvlfMO63H3peuav8s_heyB7Q"
-TELEGRAM_CHAT_ID = "-4603633681"
+# === CONFIG DISCORD ===
+DISCORD_TOKEN = "MTM3MTU0MDMwNzE5MTEzNjQ2Ng.Gw7R7H.glajES6u9HPU0skz1MgLkMcW9RN53-HD9dY_KA"
+SOURCE_CHANNEL_ID = 1332865315859726342
+ALERT_CHANNEL_ID = 1371547563060232314
+KEYWORDS = ["fnac", "151"]
+CHECK_INTERVAL = 5  # secondes
 
-PRODUCT_URL = "https://store.fcbarcelona.com/fr/products/fc-barcelona-ldts-away-shirt-24-25?country=FR"
-PRODUCT_ID = "fc-barcelona-ldts-away-shirt-24-25"
-CHECK_INTERVAL = 2  # en secondes
+intents = discord.Intents.default()
+intents.message_content = True
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
-    "Pragma": "no-cache",
-    "Accept": "*/*",
-    "Accept-Language": "en-US,en;q=0.8"
-}
+client = discord.Client(intents=intents)
 
-notified_sizes = set()
+# Pour stocker les IDs des messages déjà lus
+seen_message_ids = set()
 
-# === ENVOI DE NOTIF TELEGRAM ===
-def send_telegram_message(size):
-    message = (
-        f"🔥 Maillot *Travis Scott* dispo en taille *{size}* !\n\n"
-        f"🛒 [Clique ici pour acheter]({PRODUCT_URL})"
-    )
-    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": False
-    }
-    try:
-        res = requests.post(telegram_url, data=data)
-        if res.status_code == 200:
-            print(f"✅ Alerte envoyée pour la taille {size}")
-        else:
-            print(f"❌ Erreur Telegram : {res.status_code} - {res.text}")
-    except Exception as e:
-        print("[Erreur Telegram]", e)
-
-# === CHECK STOCK SHOPIFY ===
-def check_stock():
-    json_url = f"https://store.fcbarcelona.com/products/{PRODUCT_ID}.js"
-    try:
-        response = requests.get(json_url, headers=HEADERS, timeout=10)
-        data = response.json()
-        variants = data.get("variants", [])
-        for v in variants:
-            size = v.get("public_title")
-            available = v.get("available")
-            if available and size not in notified_sizes:
-                send_telegram_message(size)
-                notified_sizes.add(size)
-                print(f"[🟢 ALERTE] {size} dispo")
+async def check_messages():
+    await client.wait_until_ready()
+    print("🎯 Bot connecté et prêt")
+    while not client.is_closed():
+        try:
+            source_channel = client.get_channel(SOURCE_CHANNEL_ID)
+            alert_channel = client.get_channel(ALERT_CHANNEL_ID)
+            if source_channel and alert_channel:
+                messages = await source_channel.history(limit=10).flatten()
+                for msg in messages:
+                    if msg.id not in seen_message_ids:
+                        content_lower = msg.content.lower()
+                        if all(k in content_lower for k in KEYWORDS):
+                            await alert_channel.send("Pokemon 151 Bundle Restock ! 🔥")
+                            print(f"✅ Message détecté : {msg.content}")
+                        seen_message_ids.add(msg.id)
             else:
-                print(f"🔍 Taille {size} : {'✅' if available else '❌'}")
-    except Exception as e:
-        print("[Erreur lors du check]", e)
+                print("⚠️ Channels non trouvés")
+        except Exception as e:
+            print(f"[ERREUR] {e}")
+        await asyncio.sleep(CHECK_INTERVAL)
 
-# === THREAD DU BOT ===
-def monitor_loop():
-    print("🟢 Bot Travis Scott actif")
-    while True:
-        check_stock()
-        time.sleep(CHECK_INTERVAL)
-
-# === SERVEUR FLASK POUR GARDER EN LIGNE SUR RAILWAY ===
+# === FLASK POUR KEEP-ALIVE RAILWAY ===
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "🚀 Bot Travis Scott en ligne ✅"
+@app.route("/")
+def index():
+    return "🟢 Bot Discord 151 actif"
 
-def run_server():
+def run_flask():
     app.run(host="0.0.0.0", port=8080)
 
-# === LANCEMENT DES 2 THREADS (bot + serveur Flask) ===
-threading.Thread(target=monitor_loop).start()
-threading.Thread(target=run_server).start()
+# === LANCEMENT FLASK + DISCORD ===
+threading.Thread(target=run_flask).start()
+
+@client.event
+async def on_ready():
+    print(f"🔗 Connecté en tant que {client.user}")
+    client.loop.create_task(check_messages())
+
+client.run(DISCORD_TOKEN)
